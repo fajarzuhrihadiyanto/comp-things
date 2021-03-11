@@ -3,6 +3,7 @@ const global = require('../global');
 const Technology = require('../models/technology');
 const Type = require('../models/type');
 const queryUtil = require('../utils/query-util');
+const imageRemover = require('../utils/image-remover');
 
 // GET TECHNOLOGIES
 exports.getTechnologies = async (req, res, next) => {
@@ -118,6 +119,17 @@ exports.putTechnology = async (req, res, next) => {
             })
         }
 
+        // CLEAR THE OLD IMAGE
+        if(req.file){
+            imageRemover(tech._doc[req.file.fieldname]);
+        }
+
+        if(req.files){
+            tech._doc[req.files[0].fieldname].forEach(file => {
+                imageRemover(file);
+            })
+        }
+
         // EDIT AND SAVE NEW DATA
         const result = await Technology.findByIdAndUpdate(techId, data, {new: true});
 
@@ -145,6 +157,20 @@ exports.deleteTechnology = async (req, res, next) => {
             error.statusCode = global.ERROR_NOT_FOUND.CODE;
             throw error;
         }
+
+        // DELETE THE IMAGE IF ANY
+        const type = await Type.findById(tech.typeId);
+        type.fields.forEach(field => {
+            if(field.fieldType === 'file'){
+                imageRemover(tech._doc[field.fieldName]);
+            }
+
+            if(field.fieldType === 'arrayOfFile'){
+                tech._doc[field.fieldName].forEach(file => {
+                    imageRemover(file);
+                })
+            }
+        })
 
         // DELETE TECHNOLOGY BY ID
         tech = await Technology.findByIdAndRemove(techId);

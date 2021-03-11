@@ -1,6 +1,10 @@
+// IMPORT NODE MODULE
+const path = require('path')
+
 // IMPORT APP MODULE
 const global = require('../global');
 const Type = require('../models/type');
+const imageRemover = require('../utils/image-remover');
 
 // VALIDATE TECH (BOTH POST AND PUT)
 exports.validateTech = async (req, res, next) => {
@@ -31,10 +35,33 @@ exports.validateTech = async (req, res, next) => {
         if(type && Array.isArray(type.fields) && type.fields.length > 0){
             type.fields.forEach(field => {
                 // CHECK IF THE FIELD IS REQUIRED BY THE TYPE
-                if(field.isRequired && !req.body[field.fieldName]){
+                if(field.isRequired && !req.body[field.fieldName] && !['file', 'arrayOfFile'].includes(field.fieldType)){
                     errors.push({
                         field: field.fieldName,
                         message: 'Field ' + field.fieldName + ' cannot be empty'
+                    })
+                }
+
+                // CHECK IF THERE IS FILE TYPE FIELD
+                if(field.isRequired && field.fieldType === 'file' && !req.file){
+                    errors.push({
+                        field: field.fieldName,
+                        message: 'Field ' + field.fieldName + ' cannot be empty'
+                    })
+                } else if(field.fieldType === 'file' && req.file) {
+                    req.body[req.file.fieldName] = path.join(req.file.destination, req.file.filename);
+                }
+
+                // CHECK IF THERE IS ARRAY OF FILES TYPE FIELD
+                if(field.isRequired && field.fieldType === 'arrayOfFile' && (!req.files || req.files.length === 0)){
+                    errors.push({
+                        field: field.fieldName,
+                        message: 'Field ' + field.fieldName + ' cannot be empty'
+                    })
+                } else if(field.fieldType === 'arrayOfFile' && req.files) {
+                    req.body[req.files[0].fieldname] = []
+                    req.files.forEach(file => {
+                        req.body[req.files[0].fieldname].push(path.join(file.destination, file.filename));
                     })
                 }
 
@@ -113,6 +140,18 @@ exports.validateTech = async (req, res, next) => {
 
         // IF ANY VALIDATION ERROR, THROW THE ERROR
         if(errors.length > 0){
+
+            // CLEAR THE UPLOADED IMAGE
+            if(req.file){
+                imageRemover(req.file.path)
+            }
+
+            if(req.files){
+                req.files.forEach(file => {
+                    imageRemover(file.path)
+                })
+            }
+
             const error = new Error(global.ERROR_VALIDATION.MESSAGE);
             error.statusCode = global.ERROR_VALIDATION.CODE;
             error.data = errors;

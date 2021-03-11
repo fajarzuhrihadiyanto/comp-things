@@ -16,11 +16,6 @@ const userAuthRoute = require('./routes/user-auth');
 const corsMiddleware = require('./middlewares/cors');
 const errorHandlerMiddleware = require('./middlewares/error-handler');
 
-// TEMPORARY PACKAGE
-const global = require('./global');
-const Technology = require('./models/technology');
-const queryUtil = require('./utils/query-util');
-
 // DEFINE EXPRESS APP
 const app = express();
 
@@ -28,8 +23,30 @@ const app = express();
 const dotenv = require('dotenv');
 dotenv.config();
 
+// CONFIGURE FILE STORAGE
+const fileStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'public/images');
+    },
+    filename: (req, file, cb) => {
+        cb(null, new Date().toISOString().replace(/:/g, '-') + '-' + file.originalname);
+    }
+});
+
+// CONFIGURE FILE FILTER
+const fileFilter = (req, file, cb) => {
+    if(['image/png', 'image/jpg', 'image/jpeg'].includes(file.mimetype)){
+        cb(null, true);
+    } else {
+        const error = new Error("File Type Error: must be one of png, jpg, jpeg");
+        error.statusCode = 422;
+        cb(error);
+    }
+}
+
 // OTHER MIDDLEWARE
 app.use(bodyParser.json());
+app.use(multer({ storage: fileStorage, fileFilter: fileFilter }).array('images'));
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
 // CROSS-ORIGIN RESOURCE SHARING MIDDLEWARE
