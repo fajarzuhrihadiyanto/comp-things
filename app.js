@@ -70,6 +70,12 @@ const databaseHost = process.env.DATABASE_HOST;
 const databaseUser = process.env.DATABASE_USER;
 const databasePassword = process.env.DATABASE_PASSWORD;
 
+console.log(process.env)
+console.log(databaseName)
+console.log(databaseHost)
+console.log(databaseUser)
+console.log(databasePassword)
+
 mongoose.connect(
     'mongodb+srv://'
     + databaseUser + ':'
@@ -78,5 +84,5 @@ mongoose.connect(
     + databaseName + '?retryWrites=true&w=majority'
 ).then(result => {
     // LISTEN TO PORT 8080 WHEN SUCCEED
-    app.listen(8080);
+    app.listen(process.env.SERVER_PORT);
 })
